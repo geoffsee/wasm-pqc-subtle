@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WASM PQC Subtle Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f9;
+        }
+        h1 { color: #333; }
+        .test-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        .pass { background-color: #d4edda; color: #155724; }
+        .fail { background-color: #f8d7da; color: #721c24; }
+        pre {
+            background: #eee;
+            padding: 10px;
+            overflow-x: auto;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover { background-color: #0056b3; }
+        #logs {
+            background: #222;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>WASM PQC Subtle Test Suite</h1>
+    <p>Testing NIST ML-KEM (FIPS 203) in the browser via WebAssembly.</p>
+
+    <button id="runTests">Run All Tests</button>
+
+    <div class="test-section">
+        <h2>ML-KEM-768</h2>
+        <div id="status768" class="status">Not run</div>
+        <pre id="output768"></pre>
+    </div>
+
+    <div class="test-section">
+        <h2>ML-KEM-1024</h2>
+        <div id="status1024" class="status">Not run</div>
+        <pre id="output1024"></pre>
+    </div>
+
+    <h2>Console Logs</h2>
+    <div id="logs"></div>
+
+    <script type="module">
+        import init, {
+            ml_kem_768_generate_keypair,
+            ml_kem_768_encapsulate,
+            ml_kem_768_decapsulate,
+            ml_kem_1024_generate_keypair,
+            ml_kem_1024_encapsulate,
+            ml_kem_1024_decapsulate
+        } from './pkg/wasm_pqc_subtle.js';
+
+        const logElement = document.getElementById('logs');
+        function log(message) {
+            console.log(message);
+            logElement.textContent += message + '\n';
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function bytesToHex(bytes) {
+            return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function runTest(name, gen, enc, dec, statusId, outputId) {
+            const status = document.getElementById(statusId);
+            const output = document.getElementById(outputId);
+            
+            status.textContent = 'Running...';
+            status.className = 'status';
+            output.textContent = '';
+
+            try {
+                log(`Starting ${name} test...`);
+                
+                // 1. Keygen
+                const startKeygen = performance.now();
+                const kp = gen();
+                const endKeygen = performance.now();
+                log(`${name} Keypair generated in ${(endKeygen - startKeygen).toFixed(2)}ms`);
+                
+                const pk = kp.public_key;
+                const sk = kp.secret_key;
+                log(`${name} PK length: ${pk.length} bytes`);
+                log(`${name} SK length: ${sk.length} bytes`);
+
+                // 2. Encapsulate
+                const startEnc = performance.now();
+                const res = enc(pk);
+                const endEnc = performance.now();
+                log(`${name} Encapsulation done in ${(endEnc - startEnc).toFixed(2)}ms`);
+                
+                const ct = res.ciphertext;
+                const ss_sender = res.shared_secret;
+                log(`${name} CT length: ${ct.length} bytes`);
+                log(`${name} SS length: ${ss_sender.length} bytes`);
+
+                // 3. Decapsulate
+                const startDec = performance.now();
+                const ss_receiver = dec(sk, ct);
+                const endDec = performance.now();
+                log(`${name} Decapsulation done in ${(endDec - startDec).toFixed(2)}ms`);
+
+                // 4. Verify
+                const match = ss_sender.length === ss_receiver.length &&
+                            ss_sender.every((v, i) => v === ss_receiver[i]);
+
+                if (match) {
+                    status.textContent = 'PASS';
+                    status.className = 'status pass';
+                    output.textContent = `Shared Secret: ${bytesToHex(ss_sender)}\n\nMatches!`;
+                    log(`${name} SUCCESS: Shared secrets match.`);
+                } else {
+                    throw new Error('Shared secrets do not match!');
+                }
+
+            } catch (e) {
+                status.textContent = 'FAIL';
+                status.className = 'status fail';
+                output.textContent = `Error: ${e.message}`;
+                log(`${name} ERROR: ${e.message}`);
+                console.error(e);
+            }
+        }
+
+        async function main() {
+            log('Initializing WASM...');
+            try {
+                await init();
+                log('WASM Initialized successfully.');
+            } catch (e) {
+                log(`WASM Initialization failed: ${e.message}`);
+                return;
+            }
+
+            document.getElementById('runTests').addEventListener('click', async () => {
+                logElement.textContent = '';
+                await runTest(
+                    'ML-KEM-768',
+                    ml_kem_768_generate_keypair,
+                    ml_kem_768_encapsulate,
+                    ml_kem_768_decapsulate,
+                    'status768',
+                    'output768'
+                );
+
+                await runTest(
+                    'ML-KEM-1024',
+                    ml_kem_1024_generate_keypair,
+                    ml_kem_1024_encapsulate,
+                    ml_kem_1024_decapsulate,
+                    'status1024',
+                    'output1024'
+                );
+            });
+        }
+
+        main();
+    </script>
+</body>
+</html>
