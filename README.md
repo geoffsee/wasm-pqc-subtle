@@ -1,10 +1,10 @@
 # wasm-pqc-subtle
 
-Post-quantum key encapsulation for the browser. A WebAssembly library implementing [ML-KEM](https://csrc.nist.gov/pubs/fips/203/final) (FIPS 203) for secure key establishment, compiled from Rust.
+Post-quantum key encapsulation, digital signatures, and password hashing for the browser. A WebAssembly library implementing [ML-KEM](https://csrc.nist.gov/pubs/fips/203/final) (FIPS 203), [ML-DSA](https://csrc.nist.gov/pubs/fips/204/final) (FIPS 204), and [Argon2](https://datatracker.ietf.org/doc/html/rfc9106), compiled from Rust.
 
 ## Overview
 
-This library provides ML-KEM-768 and ML-KEM-1024 key encapsulation via WebAssembly, enabling post-quantum key exchange in web applications. It wraps the [`ml-kem`](https://crates.io/crates/ml-kem) Rust crate using [`wasm-bindgen`](https://crates.io/crates/wasm-bindgen) and targets the `wasm32-unknown-unknown` platform.
+This library provides ML-KEM, ML-DSA, and Argon2 via WebAssembly, enabling post-quantum key exchange, digital signatures, and modern password hashing in web applications. It wraps the [`ml-kem`](https://crates.io/crates/ml-kem), [`ml-dsa`](https://crates.io/crates/ml-dsa), and [`argon2`](https://crates.io/crates/argon2) Rust crates using [`wasm-bindgen`](https://crates.io/crates/wasm-bindgen) and targets the `wasm32-unknown-unknown` platform.
 
 **WASM binary size:** ~68 KB (optimized with LTO + binaryen)
 
@@ -14,6 +14,9 @@ This library provides ML-KEM-768 and ML-KEM-1024 key encapsulation via WebAssemb
 |-----------|-------------------|----------|
 | ML-KEM-768 | Level 3 (~192-bit) | Default. Recommended for most applications. |
 | ML-KEM-1024 | Level 5 (~256-bit) | Higher security margin. |
+| ML-DSA-44 | Level 2 (~128-bit) | Digital signatures (compact). |
+| ML-DSA-65 | Level 3 (~192-bit) | Standard digital signatures. |
+| ML-DSA-87 | Level 5 (~256-bit) | High-security digital signatures. |
 
 ## Installation
 
@@ -22,6 +25,8 @@ npm install wasm-pqc-subtle
 ```
 
 ## Usage
+
+### Key Encapsulation (ML-KEM)
 
 ```javascript
 import init, {
@@ -46,32 +51,119 @@ const sharedSecret = ml_kem_768_decapsulate(keypair.secret_key, result.ciphertex
 
 ML-KEM-1024 functions follow the same pattern (`ml_kem_1024_generate_keypair`, etc.). Convenience aliases `kem_generate_keypair`, `kem_encapsulate`, and `kem_decapsulate` default to ML-KEM-768.
 
+### Digital Signatures (ML-DSA)
+
+```javascript
+import init, {
+  ml_dsa_65_generate_keypair,
+  ml_dsa_65_sign,
+  ml_dsa_65_verify,
+} from "wasm-pqc-subtle";
+
+await init();
+
+const message = new TextEncoder().encode("Hello Post-Quantum!");
+
+// Generate a keypair
+const keypair = ml_dsa_65_generate_keypair();
+
+// Sign
+const signature = ml_dsa_65_sign(keypair.secret_key, message);
+
+// Verify
+const isValid = ml_dsa_65_verify(keypair.public_key, message, signature);
+```
+
+ML-DSA-44 and ML-DSA-87 functions follow the same pattern (`ml_dsa_44_generate_keypair`, etc.). Convenience aliases `dsa_generate_keypair`, `dsa_sign`, and `dsa_verify` default to ML-DSA-65.
+
+### Password Hashing (Argon2)
+
+```javascript
+import init, { argon2id_hash, argon2_verify } from "wasm-pqc-subtle";
+
+await init();
+
+const password = new TextEncoder().encode("correct horse battery staple");
+
+// Hash using Argon2id with a random salt and recommended defaults
+const phc = argon2id_hash(password); // returns a PHC string like "$argon2id$v=19$m=...$...$..."
+
+// Verify
+const ok = argon2_verify(password, phc); // true
+const bad = argon2_verify(new TextEncoder().encode("wrong"), phc); // false
+```
+
+Notes:
+- `argon2id_hash` generates a secure random salt internally and returns a standard PHC string.
+- `argon2_verify` parses the PHC string and verifies using parameters embedded in it.
+- Defaults are tuned by the upstream `argon2` crate and suitable for browsers; adjust at build-time if you need stricter limits.
+
 ## API
 
-### `ml_kem_768_generate_keypair() -> KemKeyPair`
+### ML-KEM API
+
+#### `ml_kem_768_generate_keypair() -> KemKeyPair`
 
 Generates an ML-KEM-768 key pair.
 
-### `ml_kem_768_encapsulate(public_key: Uint8Array) -> CiphertextAndSharedSecret`
+#### `ml_kem_768_encapsulate(public_key: Uint8Array) -> CiphertextAndSharedSecret`
 
 Encapsulates against a public key, returning a ciphertext and shared secret.
 
-### `ml_kem_768_decapsulate(secret_key: Uint8Array, ciphertext: Uint8Array) -> Uint8Array`
+#### `ml_kem_768_decapsulate(secret_key: Uint8Array, ciphertext: Uint8Array) -> Uint8Array`
 
 Decapsulates a ciphertext with a secret key, returning the shared secret.
 
-### `ml_kem_1024_generate_keypair()` / `ml_kem_1024_encapsulate()` / `ml_kem_1024_decapsulate()`
+#### `ml_kem_1024_generate_keypair()` / `ml_kem_1024_encapsulate()` / `ml_kem_1024_decapsulate()`
 
 Same interface as above, using ML-KEM-1024 parameters.
 
-### `kem_generate_keypair()` / `kem_encapsulate()` / `kem_decapsulate()`
+#### `kem_generate_keypair()` / `kem_encapsulate()` / `kem_decapsulate()`
 
 Convenience aliases that use ML-KEM-768.
+
+### ML-DSA API
+
+#### `ml_dsa_65_generate_keypair() -> DsaKeyPair`
+
+Generates an ML-DSA-65 key pair.
+
+#### `ml_dsa_65_sign(secret_key: Uint8Array, message: Uint8Array) -> Uint8Array`
+
+Signs a message with a secret key.
+
+#### `ml_dsa_65_verify(public_key: Uint8Array, message: Uint8Array, signature: Uint8Array) -> boolean`
+
+Verifies a signature against a public key and message.
+
+#### `ml_dsa_44_generate_keypair()` / `ml_dsa_44_sign()` / `ml_dsa_44_verify()`
+#### `ml_dsa_87_generate_keypair()` / `ml_dsa_87_sign()` / `ml_dsa_87_verify()`
+
+Same interface as above, using ML-DSA-44 or ML-DSA-87 parameters.
+
+#### `dsa_generate_keypair()` / `dsa_sign()` / `dsa_verify()`
+
+Convenience aliases that use ML-DSA-65.
+
+### Argon2 API
+
+#### `argon2id_hash(password: Uint8Array) -> string`
+
+Hashes a password using Argon2id (v=0x13) with a securely generated random salt. Returns a PHC-formatted string suitable for storage.
+
+#### `argon2_verify(password: Uint8Array, phc: string) -> boolean`
+
+Verifies a password against a PHC-formatted Argon2 hash.
 
 ### Types
 
 ```typescript
 class KemKeyPair {
+  readonly public_key: Uint8Array;
+  readonly secret_key: Uint8Array;
+}
+
+class DsaKeyPair {
   readonly public_key: Uint8Array;
   readonly secret_key: Uint8Array;
 }
@@ -100,7 +192,7 @@ This runs `wasm-pack build --target web --release` followed by `wasm-opt -Oz` fo
 
 ### Test
 
-Open `index.html` in a browser (served over HTTP) to run the ML-KEM-768 and ML-KEM-1024 test suite.
+Open `index.html` in a browser (served over HTTP) to run the ML-KEM, ML-DSA, and Argon2 test suite.
 
 ### Publish
 
