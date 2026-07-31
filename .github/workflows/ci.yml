@@ -1,0 +1,41 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Setup Rust
+        run: |
+          rustup update stable
+          rustup default stable
+          rustup target add wasm32-unknown-unknown
+          rustup component add rustfmt
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked || cargo install wasm-pack
+
+      - name: Cargo fmt (check)
+        run: cargo fmt --all -- --check
+
+      - name: Native tests
+        run: cargo test --all-features
+
+      - name: Build WASM package
+        run: make build

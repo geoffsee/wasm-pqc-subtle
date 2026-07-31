@@ -1,12 +1,17 @@
-use wasm_bindgen::prelude::*;
-use ml_kem::{MlKem768, MlKem768Params, MlKem1024, MlKem1024Params, KemCore, Encoded, EncodedSizeUser};
-use ml_kem::kem::{EncapsulationKey, DecapsulationKey, Encapsulate, Decapsulate};
-use ml_dsa::{MlDsa44, MlDsa65, MlDsa87, KeyGen, SigningKey, VerifyingKey, Signature, EncodedSigningKey, EncodedVerifyingKey, EncodedSignature};
-use ml_dsa::signature::{Signer, Verifier};
-use rand_core::OsRng;
-use ml_kem::Ciphertext as KemCiphertext;
-use argon2::{Argon2, PasswordHasher, PasswordVerifier};
 use argon2::password_hash::phc::PasswordHash;
+use argon2::{Argon2, PasswordHasher, PasswordVerifier};
+use ml_dsa::signature::{Signer, Verifier};
+use ml_dsa::{
+    EncodedSignature, EncodedSigningKey, EncodedVerifyingKey, KeyGen, MlDsa44, MlDsa65, MlDsa87,
+    Signature, SigningKey, VerifyingKey,
+};
+use ml_kem::Ciphertext as KemCiphertext;
+use ml_kem::kem::{Decapsulate, DecapsulationKey, Encapsulate, EncapsulationKey};
+use ml_kem::{
+    Encoded, EncodedSizeUser, KemCore, MlKem768, MlKem768Params, MlKem1024, MlKem1024Params,
+};
+use rand_core::OsRng;
+use wasm_bindgen::prelude::*;
 
 // ──────────────────────────────────────────────────────────────
 // Data structures exposed to JavaScript
@@ -101,13 +106,17 @@ pub fn ml_kem_768_generate_keypair() -> Result<KemKeyPair, JsValue> {
 ///
 /// Returns: ciphertext + 32-byte shared secret
 #[wasm_bindgen]
-pub fn ml_kem_768_encapsulate(public_key_bytes: &[u8]) -> Result<CiphertextAndSharedSecret, JsValue> {
+pub fn ml_kem_768_encapsulate(
+    public_key_bytes: &[u8],
+) -> Result<CiphertextAndSharedSecret, JsValue> {
     let enc_pk: Encoded<EncapsulationKey<MlKem768Params>> = public_key_bytes
         .try_into()
         .map_err(|_| JsValue::from_str("Invalid public key length"))?;
     let pk = EncapsulationKey::<MlKem768Params>::from_bytes(&enc_pk);
 
-    let (ct, ss) = pk.encapsulate(&mut OsRng).map_err(|_| JsValue::from_str("Encapsulation failed"))?;
+    let (ct, ss) = pk
+        .encapsulate(&mut OsRng)
+        .map_err(|_| JsValue::from_str("Encapsulation failed"))?;
 
     Ok(CiphertextAndSharedSecret {
         ciphertext: ct.to_vec(),
@@ -123,7 +132,10 @@ pub fn ml_kem_768_encapsulate(public_key_bytes: &[u8]) -> Result<CiphertextAndSh
 ///
 /// Returns: 32-byte shared secret (or error)
 #[wasm_bindgen]
-pub fn ml_kem_768_decapsulate(secret_key_bytes: &[u8], ciphertext_bytes: &[u8]) -> Result<Vec<u8>, JsValue> {
+pub fn ml_kem_768_decapsulate(
+    secret_key_bytes: &[u8],
+    ciphertext_bytes: &[u8],
+) -> Result<Vec<u8>, JsValue> {
     let enc_sk: Encoded<DecapsulationKey<MlKem768Params>> = secret_key_bytes
         .try_into()
         .map_err(|_| JsValue::from_str("Invalid secret key length"))?;
@@ -133,7 +145,9 @@ pub fn ml_kem_768_decapsulate(secret_key_bytes: &[u8], ciphertext_bytes: &[u8]) 
         .try_into()
         .map_err(|_| JsValue::from_str("Invalid ciphertext length"))?;
 
-    let ss = sk.decapsulate(&ct).map_err(|_| JsValue::from_str("Decapsulation failed"))?;
+    let ss = sk
+        .decapsulate(&ct)
+        .map_err(|_| JsValue::from_str("Decapsulation failed"))?;
     Ok(ss.to_vec())
 }
 
@@ -153,13 +167,17 @@ pub fn ml_kem_1024_generate_keypair() -> Result<KemKeyPair, JsValue> {
 
 /// Performs ML-KEM-1024 encapsulation.
 #[wasm_bindgen]
-pub fn ml_kem_1024_encapsulate(public_key_bytes: &[u8]) -> Result<CiphertextAndSharedSecret, JsValue> {
+pub fn ml_kem_1024_encapsulate(
+    public_key_bytes: &[u8],
+) -> Result<CiphertextAndSharedSecret, JsValue> {
     let enc_pk: Encoded<EncapsulationKey<MlKem1024Params>> = public_key_bytes
         .try_into()
         .map_err(|_| JsValue::from_str("Invalid public key length"))?;
     let pk = EncapsulationKey::<MlKem1024Params>::from_bytes(&enc_pk);
 
-    let (ct, ss) = pk.encapsulate(&mut OsRng).map_err(|_| JsValue::from_str("Encapsulation failed"))?;
+    let (ct, ss) = pk
+        .encapsulate(&mut OsRng)
+        .map_err(|_| JsValue::from_str("Encapsulation failed"))?;
 
     Ok(CiphertextAndSharedSecret {
         ciphertext: ct.to_vec(),
@@ -169,7 +187,10 @@ pub fn ml_kem_1024_encapsulate(public_key_bytes: &[u8]) -> Result<CiphertextAndS
 
 /// Performs ML-KEM-1024 decapsulation.
 #[wasm_bindgen]
-pub fn ml_kem_1024_decapsulate(secret_key_bytes: &[u8], ciphertext_bytes: &[u8]) -> Result<Vec<u8>, JsValue> {
+pub fn ml_kem_1024_decapsulate(
+    secret_key_bytes: &[u8],
+    ciphertext_bytes: &[u8],
+) -> Result<Vec<u8>, JsValue> {
     let enc_sk: Encoded<DecapsulationKey<MlKem1024Params>> = secret_key_bytes
         .try_into()
         .map_err(|_| JsValue::from_str("Invalid secret key length"))?;
@@ -179,7 +200,9 @@ pub fn ml_kem_1024_decapsulate(secret_key_bytes: &[u8], ciphertext_bytes: &[u8])
         .try_into()
         .map_err(|_| JsValue::from_str("Invalid ciphertext length"))?;
 
-    let ss = sk.decapsulate(&ct).map_err(|_| JsValue::from_str("Decapsulation failed"))?;
+    let ss = sk
+        .decapsulate(&ct)
+        .map_err(|_| JsValue::from_str("Decapsulation failed"))?;
     Ok(ss.to_vec())
 }
 
@@ -201,7 +224,10 @@ pub fn kem_encapsulate(public_key_bytes: &[u8]) -> Result<CiphertextAndSharedSec
 
 /// Alias: decapsulate using ML-KEM-768 secret key + ciphertext
 #[wasm_bindgen]
-pub fn kem_decapsulate(secret_key_bytes: &[u8], ciphertext_bytes: &[u8]) -> Result<Vec<u8>, JsValue> {
+pub fn kem_decapsulate(
+    secret_key_bytes: &[u8],
+    ciphertext_bytes: &[u8],
+) -> Result<Vec<u8>, JsValue> {
     ml_kem_768_decapsulate(secret_key_bytes, ciphertext_bytes)
 }
 
@@ -232,7 +258,11 @@ pub fn ml_dsa_44_sign(secret_key_bytes: &[u8], message: &[u8]) -> Result<Vec<u8>
 
 /// Verifies an ML-DSA-44 signature against a message and public key.
 #[wasm_bindgen]
-pub fn ml_dsa_44_verify(public_key_bytes: &[u8], message: &[u8], signature_bytes: &[u8]) -> Result<bool, JsValue> {
+pub fn ml_dsa_44_verify(
+    public_key_bytes: &[u8],
+    message: &[u8],
+    signature_bytes: &[u8],
+) -> Result<bool, JsValue> {
     let enc_pk: EncodedVerifyingKey<MlDsa44> = public_key_bytes
         .try_into()
         .map_err(|_| JsValue::from_str("Invalid public key length"))?;
@@ -241,7 +271,8 @@ pub fn ml_dsa_44_verify(public_key_bytes: &[u8], message: &[u8], signature_bytes
     let enc_sig: EncodedSignature<MlDsa44> = signature_bytes
         .try_into()
         .map_err(|_| JsValue::from_str("Invalid signature length"))?;
-    let sig = Signature::<MlDsa44>::decode(&enc_sig).ok_or_else(|| JsValue::from_str("Invalid signature encoding"))?;
+    let sig = Signature::<MlDsa44>::decode(&enc_sig)
+        .ok_or_else(|| JsValue::from_str("Invalid signature encoding"))?;
 
     Ok(pk.verify(message, &sig).is_ok())
 }
@@ -273,7 +304,11 @@ pub fn ml_dsa_65_sign(secret_key_bytes: &[u8], message: &[u8]) -> Result<Vec<u8>
 
 /// Verifies an ML-DSA-65 signature.
 #[wasm_bindgen]
-pub fn ml_dsa_65_verify(public_key_bytes: &[u8], message: &[u8], signature_bytes: &[u8]) -> Result<bool, JsValue> {
+pub fn ml_dsa_65_verify(
+    public_key_bytes: &[u8],
+    message: &[u8],
+    signature_bytes: &[u8],
+) -> Result<bool, JsValue> {
     let enc_pk: EncodedVerifyingKey<MlDsa65> = public_key_bytes
         .try_into()
         .map_err(|_| JsValue::from_str("Invalid public key length"))?;
@@ -282,7 +317,8 @@ pub fn ml_dsa_65_verify(public_key_bytes: &[u8], message: &[u8], signature_bytes
     let enc_sig: EncodedSignature<MlDsa65> = signature_bytes
         .try_into()
         .map_err(|_| JsValue::from_str("Invalid signature length"))?;
-    let sig = Signature::<MlDsa65>::decode(&enc_sig).ok_or_else(|| JsValue::from_str("Invalid signature encoding"))?;
+    let sig = Signature::<MlDsa65>::decode(&enc_sig)
+        .ok_or_else(|| JsValue::from_str("Invalid signature encoding"))?;
 
     Ok(pk.verify(message, &sig).is_ok())
 }
@@ -314,7 +350,11 @@ pub fn ml_dsa_87_sign(secret_key_bytes: &[u8], message: &[u8]) -> Result<Vec<u8>
 
 /// Verifies an ML-DSA-87 signature.
 #[wasm_bindgen]
-pub fn ml_dsa_87_verify(public_key_bytes: &[u8], message: &[u8], signature_bytes: &[u8]) -> Result<bool, JsValue> {
+pub fn ml_dsa_87_verify(
+    public_key_bytes: &[u8],
+    message: &[u8],
+    signature_bytes: &[u8],
+) -> Result<bool, JsValue> {
     let enc_pk: EncodedVerifyingKey<MlDsa87> = public_key_bytes
         .try_into()
         .map_err(|_| JsValue::from_str("Invalid public key length"))?;
@@ -323,7 +363,8 @@ pub fn ml_dsa_87_verify(public_key_bytes: &[u8], message: &[u8], signature_bytes
     let enc_sig: EncodedSignature<MlDsa87> = signature_bytes
         .try_into()
         .map_err(|_| JsValue::from_str("Invalid signature length"))?;
-    let sig = Signature::<MlDsa87>::decode(&enc_sig).ok_or_else(|| JsValue::from_str("Invalid signature encoding"))?;
+    let sig = Signature::<MlDsa87>::decode(&enc_sig)
+        .ok_or_else(|| JsValue::from_str("Invalid signature encoding"))?;
 
     Ok(pk.verify(message, &sig).is_ok())
 }
@@ -346,7 +387,11 @@ pub fn dsa_sign(secret_key_bytes: &[u8], message: &[u8]) -> Result<Vec<u8>, JsVa
 
 /// Alias: verify with ML-DSA-65
 #[wasm_bindgen]
-pub fn dsa_verify(public_key_bytes: &[u8], message: &[u8], signature_bytes: &[u8]) -> Result<bool, JsValue> {
+pub fn dsa_verify(
+    public_key_bytes: &[u8],
+    message: &[u8],
+    signature_bytes: &[u8],
+) -> Result<bool, JsValue> {
     ml_dsa_65_verify(public_key_bytes, message, signature_bytes)
 }
 
