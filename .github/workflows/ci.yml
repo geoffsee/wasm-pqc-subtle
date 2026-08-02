@@ -29,7 +29,10 @@ jobs:
           rustup component add rustfmt
 
       - name: Install wasm-pack
-        run: cargo install wasm-pack --locked || cargo install wasm-pack
+        run: |
+          if ! command -v wasm-pack >/dev/null 2>&1; then
+            cargo install wasm-pack --locked || cargo install wasm-pack
+          fi
 
       - name: Cargo fmt (check)
         run: cargo fmt --all -- --check
