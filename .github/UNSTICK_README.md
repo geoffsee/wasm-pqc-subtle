@@ -1,7 +1,7 @@
 # Unstick patch (2026-08-24)
 
-Workflow fixes are ready but cannot be applied by the weekly Supervisor:
-`RELEASE_TOKEN` lacks the classic PAT `workflow` scope (and cannot open PRs).
+Supervisor cannot apply this itself: `RELEASE_TOKEN` lacks classic PAT `workflow`
+scope and cannot open PRs. Tracking: #15.
 
 ## Apply (owner / PAT with Workflows write)
 
@@ -10,15 +10,12 @@ git checkout main && git pull
 git apply .github/unstick-dependabot-oidc.patch
 git add .github/workflows
 git commit -m "ci: unstick Dependabot merge attribution and npm OIDC publish"
-git push origin main   # or open a PR if you prefer review
-gh workflow run release.yml -f '' || gh workflow run Release
-# Prefer re-running the failed tag release:
-gh run list --workflow=release.yml --limit 1
-# Or: push is not needed — re-run failed run 30831565782 after the fix lands:
-# gh run rerun 30831565782 --failed
+git push origin main   # or open a PR
+gh run rerun 30831565782 --failed
+npm view wasm-pqc-subtle version   # expect 0.2.5
 ```
 
-After apply, confirm `npm view wasm-pqc-subtle version` is `0.2.5`.
+Confirm npm Trusted Publisher for `wasm-pqc-subtle` uses workflow file `release.yml`.
 
 ## What the patch fixes
 
@@ -27,5 +24,3 @@ After apply, confirm `npm view wasm-pqc-subtle version` is `0.2.5`.
 3. `@dependabot rebase` uses `RELEASE_TOKEN`.
 4. Release: drop `setup-node` `registry-url`; clear `NODE_AUTH_TOKEN` (npm OIDC).
 5. Supervisor receives Actions `GITHUB_TOKEN` for future workflow edits.
-
-See issues #7 #10 #12 #13.
