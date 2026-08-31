@@ -1,3 +1,13 @@
+
+# Unstick status (2026-08-31)
+
+Weekly unsticker could push code branches but **not** open PRs or edit workflows
+(PAT lacks Pull requests write + classic `workflow` scope).
+
+- argon2 Dependabot #16 fixed on its branch (`crypto-common` 0.2.2); awaiting CI/auto-merge.
+- Unstick workflow patch still needs owner apply per instructions below.
+- npm still at 0.2.4 until Release OIDC fix lands + failed run rerun.
+
 # Unstick patch (2026-08-24)
 
 Supervisor cannot apply this itself: `RELEASE_TOKEN` lacks classic PAT `workflow`
