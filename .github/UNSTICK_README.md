@@ -1,42 +1,52 @@
-# Unstick status (2026-08-31)
+# Unstick status (2026-09-07)
 
-Weekly unsticker PAT can push non-workflow commits to `main` but **cannot**
-open PRs, comment, dispatch workflows, or edit `.github/workflows/*`
-(missing Pull requests write + classic `workflow` scope).
+Weekly unsticker PAT (`RELEASE_TOKEN`) can push **non-workflow** commits to
+`main` (ruleset bypass) but **cannot**:
 
-## Cleared this week
+| Action | Result |
+|---|---|
+| Push `.github/workflows/*` | rejected — missing `workflow` / Workflows write |
+| `gh pr create` | 403 |
+| `gh run rerun` / `gh workflow run` | 403 |
+| Issue comment / edit | 403 |
+| Read Actions `GITHUB_TOKEN` in Supervisor agent step | not injected (only `GH_TOKEN=RELEASE_TOKEN`) |
 
-- Dependabot **#16** (argon2 → 0.6.0) was red: `digest` 0.11.3 vs `crypto-common` 0.2.0.
-  Fixed by bumping `crypto-common` to **0.2.2**; PR merged.
-- Auto Tag did not fire on the GITHUB_TOKEN squash-merge; triggered via a
-  user-token `Cargo.lock` push (`cpufeatures` 0.3.1) → tagged **v0.2.6**.
+No open Dependabot PRs. Dependabot Updates (cargo + GHA) succeeded today with
+nothing to open. Default-branch **Test** is green. Tags **v0.2.5** / **v0.2.6**
+exist; npm latest remains **0.2.4**.
 
 ## Still blocked (owner apply)
 
-- Release for **v0.2.5** and **v0.2.6** both fail npm publish with E404
-  (`setup-node` `registry-url` / `NODE_AUTH_TOKEN` short-circuits OIDC).
-  npm latest remains **0.2.4**.
-- Unstick workflow patch still cannot be pushed without `workflow` scope.
+Release for **v0.2.5** and **v0.2.6** fail npm publish with E404 because
+`setup-node` `registry-url` writes an `.npmrc` `_authToken` that short-circuits
+OIDC trusted publishing.
 
-# Unstick patch (2026-08-24)
+Patch is ready on `main`: `.github/unstick-dependabot-oidc.patch`.
 
-Supervisor cannot apply this itself: `RELEASE_TOKEN` lacks classic PAT `workflow`
-scope and cannot open PRs. Tracking: #15.
+### Owner: grant token scopes, then apply (one shot)
 
-## Apply (owner / PAT with Workflows write)
+1. Edit fine-grained `RELEASE_TOKEN` (or replace it) with:
+   - **Contents**: Read and write
+   - **Workflows**: Read and write
+   - **Pull requests**: Read and write
+   - **Actions**: Read and write
+2. Ensure npm Trusted Publisher for `wasm-pqc-subtle` points at `release.yml`.
+3. Run:
 
 ```bash
 git checkout main && git pull
 git apply .github/unstick-dependabot-oidc.patch
 git add .github/workflows
 git commit -m "ci: unstick Dependabot merge attribution and npm OIDC publish"
-git push origin main   # or open a PR
-gh run rerun 33433263134 --failed   # v0.2.6 Release
-# optional: also rerun 30831565782 for v0.2.5 if you still want that version on npm
+git push origin main
+# Tag commit still has old release.yml — dispatch from main (has the fix):
+gh workflow run Release --ref main
+# Or: move tag onto a commit that includes the fix, then push the tag.
 npm view wasm-pqc-subtle version   # expect 0.2.6
 ```
 
-Confirm npm Trusted Publisher for `wasm-pqc-subtle` uses workflow file `release.yml`.
+After the patch lands, Supervisor will receive Actions `GITHUB_TOKEN` and can
+edit workflows on future runs.
 
 ## What the patch fixes
 
