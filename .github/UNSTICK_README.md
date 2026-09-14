@@ -1,4 +1,4 @@
-# Unstick status (2026-09-07)
+# Unstick status (2026-09-14)
 
 Weekly unsticker PAT (`RELEASE_TOKEN`) can push **non-workflow** commits to
 `main` (ruleset bypass) but **cannot**:
@@ -11,15 +11,19 @@ Weekly unsticker PAT (`RELEASE_TOKEN`) can push **non-workflow** commits to
 | Issue comment / edit | 403 |
 | Read Actions `GITHUB_TOKEN` in Supervisor agent step | not injected (only `GH_TOKEN=RELEASE_TOKEN`) |
 
-No open Dependabot PRs. Dependabot Updates (cargo + GHA) succeeded today with
-nothing to open. Default-branch **Test** is green. Tags **v0.2.5** / **v0.2.6**
-exist; npm latest remains **0.2.4**.
+No open Dependabot PRs. Dependabot Updates (cargo + GHA) succeeded today;
+GHA opened/merged #18 (`codeql-action` 4.37.9→4.38.0). Default-branch
+scheduled CI is green. Tags **v0.2.5** / **v0.2.6** exist; npm latest remains
+**0.2.4**.
 
 ## Still blocked (owner apply)
 
 Release for **v0.2.5** and **v0.2.6** fail npm publish with E404 because
 `setup-node` `registry-url` writes an `.npmrc` `_authToken` that short-circuits
 OIDC trusted publishing.
+
+Dependabot auto-merge still uses `GITHUB_TOKEN` on `pull_request`, so merges
+(e.g. #18) do not start Auto Tag / Test / CodeQL on the resulting `main` push.
 
 Patch is ready on `main`: `.github/unstick-dependabot-oidc.patch`.
 
