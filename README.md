@@ -109,6 +109,17 @@ make component                        # -> dist/pqc-subtle.wasm (+ .wit, BUILD-I
 make smoke                            # compose tests/smoke-consumer with it and run under wasmtime
 ```
 
+The npm package ships this component too, under `wasm-pqc-subtle/component`: `component/pqc-subtle.wasm`, its WIT in `component/wit/`, and a JavaScript module whose exports are the WIT imports:
+
+```js
+import { argon2, mlKem } from 'wasm-pqc-subtle/component';
+
+const phc = argon2.hash(password, { memoryKib: 16384, iterations: 2, parallelism: 1, outputLength: null });
+const kp = mlKem.generateKeypair('ml-kem-768');
+```
+
+That module is for JavaScript running inside a component (componentize-qjs, jco); the bundler must leave `pqc-subtle:crypto/*` specifiers external, and the build composes the `.wasm` in. The package manifest's `component` field names the binary, the WIT directory, and the package so a build tool can do that without configuration. In a browser or Node, use the package root instead.
+
 A consumer declares the imports in its own WIT (the `imports` world in `wit/world.wit` is that list) and gets bindings from `wit-bindgen`, `jco`, or componentize-qjs. Then:
 
 ```sh
