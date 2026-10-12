@@ -727,7 +727,7 @@ dependencies = [
 
 [[package]]
 name = "wasm-pqc-subtle"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "argon2",
  "getrandom 0.2.17",
