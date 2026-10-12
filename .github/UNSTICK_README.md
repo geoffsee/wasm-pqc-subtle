@@ -10,16 +10,18 @@ Weekly unsticker PAT (`RELEASE_TOKEN`) can push **non-workflow** commits to
 | Issue comment | 403 `Resource not accessible by personal access token` |
 | Read Actions `GITHUB_TOKEN` in Supervisor agent step | not injected (only `GH_TOKEN=RELEASE_TOKEN`) |
 
-No open Dependabot PRs at scan time. The Monday Dependabot Updates job
-**did not start** (last success: 2026-10-05 09:19 UTC). Since that run,
-`github/codeql-action` **v4.38.3** was tagged (2026-10-08) and `wit-bindgen`
-0.61.1 landed on `main` (0.62.0 is available). This commit touches
-`.github/dependabot.yml` so those updates are scanned again.
+The Monday Dependabot Updates job **did not start** (previous success:
+2026-10-05 09:19 UTC). Touching `.github/dependabot.yml` retriggered the
+scan. That opened and landed:
 
-Default-branch Test and CodeQL are green on `65ae59a`. npm latest is
-**0.2.7** (Release [37847420467](https://github.com/geoffsee/wasm-pqc-subtle/actions/runs/37847420467)
-succeeded). Tags **v0.2.5** / **v0.2.6** still have no npm publish; rerun is
-403. Open PR #26 is a feature PR, not a Dependabot blocker.
+| PR | Result |
+|---|---|
+| #28 `wit-bindgen` 0.61.1 → 0.62.0 (semver-minor, filed in `cargo-major`) | Squash-merged with `RELEASE_TOKEN` after green Test / CodeQL. Auto-merge had skipped it. The user-token merge started Auto Tag. |
+| #29 `codeql-action` 4.38.2 → 4.38.3 | Auto-merge squash. PR checks were green. The `GITHUB_TOKEN` merge commit `fc5638a` got no `push` Test / CodeQL run. |
+
+npm latest is **0.2.8** (Release for tag `v0.2.8` succeeded). Tags
+**v0.2.5** / **v0.2.6** still have no npm publish; rerun is 403. Open PR
+#26 is a feature PR, not a Dependabot blocker.
 
 Tracking: #27.
 
