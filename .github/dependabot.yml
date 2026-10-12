@@ -1,4 +1,5 @@
 version: 2
+# Rescan 2026-10-12: the scheduled Monday 09:00 UTC job did not start.
 updates:
   - package-ecosystem: "cargo"
     directory: "/"

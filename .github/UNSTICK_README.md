@@ -1,36 +1,45 @@
-# Unstick status (2026-10-05)
+# Unstick status (2026-10-12)
 
 Weekly unsticker PAT (`RELEASE_TOKEN`) can push **non-workflow** commits to
 `main` (ruleset bypass) and **create** issues, but **cannot**:
 
 | Action | Result |
 |---|---|
-| Push `.github/workflows/*` (branch `ci/unstick-2026-10-05`) | rejected — missing `workflow` scope (`GH013`) |
+| Push `.github/workflows/*` (branch `ci/unstick-2026-10-12`) | rejected — missing `workflow` scope (`GH013`) |
 | `gh workflow run` / `gh run rerun` | 403 `Resource not accessible by personal access token` |
 | Issue comment | 403 `Resource not accessible by personal access token` |
 | Read Actions `GITHUB_TOKEN` in Supervisor agent step | not injected (only `GH_TOKEN=RELEASE_TOKEN`) |
 
-No open Dependabot PRs. Dependabot Updates (cargo + GHA) succeeded today
-and found nothing to bump. Default-branch Test and CodeQL are green on
-`7b7d93c`. Tags **v0.2.5** / **v0.2.6** exist; npm latest remains **0.2.4**.
+No open Dependabot PRs at scan time. The Monday Dependabot Updates job
+**did not start** (last success: 2026-10-05 09:19 UTC). Since that run,
+`github/codeql-action` **v4.38.3** was tagged (2026-10-08) and `wit-bindgen`
+0.61.1 landed on `main` (0.62.0 is available). This commit touches
+`.github/dependabot.yml` so those updates are scanned again.
 
-Tracking: #24.
+Default-branch Test and CodeQL are green on `65ae59a`. npm latest is
+**0.2.7** (Release [37847420467](https://github.com/geoffsee/wasm-pqc-subtle/actions/runs/37847420467)
+succeeded). Tags **v0.2.5** / **v0.2.6** still have no npm publish; rerun is
+403. Open PR #26 is a feature PR, not a Dependabot blocker.
+
+Tracking: #27.
 
 ## Still blocked (owner apply)
 
-Release for **v0.2.5** and **v0.2.6** fail npm publish with E404 because
+`.github/unstick-dependabot-oidc.patch` still applies cleanly (checked
+2026-10-12) and still cannot be pushed.
+
+Release for **v0.2.5** and **v0.2.6** failed npm publish with E404 because
 `setup-node` `registry-url` writes an `.npmrc` `_authToken` that short-circuits
-OIDC trusted publishing.
+OIDC trusted publishing. **v0.2.7** published with the same workflow, so
+latest is no longer stuck; the patch remains the hardening for the next tag.
+Rerun of the failed tag workflows is still 403, so 0.2.5 and 0.2.6 stay
+unpublished until an Actions-scoped token reruns them (or Release is
+dispatched after the patch).
 
 Dependabot auto-merge still uses `GITHUB_TOKEN` on `pull_request`, so merges
-(e.g. #22) do not start Auto Tag / Test / CodeQL on the resulting `main` push.
-`#22` itself had a green PR Test run; the merge commit `321c36d` got no `push`
-Test / Auto Tag / CodeQL run.
-
-Patch is ready on `main`: `.github/unstick-dependabot-oidc.patch` (applies
-cleanly as of 2026-10-05). It sets Supervisor `workflows: write`, injects
-Actions `GITHUB_TOKEN`, and tells the agent to retarget git at that token for
-workflow-file pushes (checkout stays on `RELEASE_TOKEN`).
+do not start Auto Tag / Test / CodeQL on the resulting `main` push. A cargo
+update that auto-merges will sit on `main` until something else changes
+`Cargo.lock` or Auto Tag is dispatched.
 
 ### Owner: grant token scopes, then apply (one shot)
 
@@ -51,10 +60,9 @@ git apply .github/unstick-dependabot-oidc.patch
 git add .github/workflows
 git commit -m "ci: unstick Dependabot merge attribution and npm OIDC publish"
 git push origin main
-# Tag commit still has old release.yml — dispatch from main (has the fix):
-gh workflow run Release --ref main
-# Or: move tag onto a commit that includes the fix, then push the tag.
-npm view wasm-pqc-subtle version   # expect 0.2.6
+# Failed v0.2.5 / v0.2.6 tag workflows still have the old release.yml.
+# After the patch is on main, rerun those failed runs or dispatch Release
+# only if you intend to republish an already-tagged version.
 ```
 
 After the patch lands, Supervisor receives Actions `GITHUB_TOKEN` with
