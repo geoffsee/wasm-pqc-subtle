@@ -90,16 +90,58 @@ index 8c48c42..bafd0d7 100644
            PROMPT
            )" --model auto --force --trust --sandbox disabled
 diff --git a/.github/workflows/update-outdated-prs.yml b/.github/workflows/update-outdated-prs.yml
-index 7df7b68..532bb7b 100644
+index 7df7b68..005a829 100644
 --- a/.github/workflows/update-outdated-prs.yml
 +++ b/.github/workflows/update-outdated-prs.yml
-@@ -17,7 +17,8 @@ jobs:
+@@ -15,21 +15,46 @@ jobs:
+   update:
+     runs-on: ubuntu-latest
      steps:
++      - name: Checkout
++        uses: actions/checkout@v7
++        with:
++          fetch-depth: 0
++          token: ${{ secrets.RELEASE_TOKEN }}
++
        - name: Update out-of-date PR branches
          env:
--          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-+          # RELEASE_TOKEN (push access) so Dependabot honors @dependabot rebase.
-+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
          run: |
            set -euo pipefail
  
++          if [ -z "${{ secrets.RELEASE_TOKEN }}" ]; then
++            echo "::error::RELEASE_TOKEN is not set."
++            exit 1
++          fi
++
++          git config user.name "github-actions[bot]"
++          git config user.email "github-actions[bot]@users.noreply.github.com"
++
+           gh pr list --repo "$GITHUB_REPOSITORY" --base main --state open \
+-            --json number,author,isDraft,mergeStateStatus \
+-            --jq '.[] | select(.isDraft|not) | select(.mergeStateStatus == "BEHIND") | "\(.number)\t\(.author.login)"' \
+-          | while IFS=$'\t' read -r number author; do
++            --json number,author,isDraft,mergeStateStatus,headRefName \
++            --jq '.[] | select(.isDraft|not) | select(.mergeStateStatus == "BEHIND") | "\(.number)\t\(.author.login)\t\(.headRefName)"' \
++          | while IFS=$'\t' read -r number author head; do
+               echo "Updating PR #$number ($author)..."
+               case "$author" in
+                 dependabot[bot]|app/dependabot)
+-                  # Dependabot rebase retriggers checks; GITHUB_TOKEN branch updates do not.
+-                  gh pr comment "$number" --repo "$GITHUB_REPOSITORY" --body "@dependabot rebase"
++                  # Dependabot rejects `@dependabot rebase` from GITHUB_TOKEN,
++                  # and RELEASE_TOKEN cannot call the comment or update-branch
++                  # APIs. Merging main and pushing retriggers required checks.
++                  git fetch origin "$head"
++                  git checkout -B "update-${number}" "origin/${head}"
++                  if ! git merge origin/main --no-edit; then
++                    echo "Skipped PR #$number (merge conflict)"
++                    git merge --abort || true
++                    git checkout main
++                    continue
++                  fi
++                  git push origin "HEAD:${head}"
++                  git checkout main
+                   ;;
+                 *)
+                   gh pr update-branch "$number" --repo "$GITHUB_REPOSITORY" || {
