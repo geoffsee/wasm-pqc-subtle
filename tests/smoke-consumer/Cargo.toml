@@ -10,4 +10,4 @@ name = "pqc-smoke-consumer"
 path = "src/main.rs"
 
 [dependencies]
-wit-bindgen = { version = "0.62.0", default-features = false, features = ["macros"] }
+wit-bindgen = { version = "0.63.0", default-features = false, features = ["macros"] }
