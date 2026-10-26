@@ -21,12 +21,15 @@ be a git merge of `main` plus `git push` with `RELEASE_TOKEN`.
 | Item | Result |
 |---|---|
 | #32 `github/codeql-action` 4.39.0 → 4.39.1 | Already auto-merged earlier today. No open Dependabot PRs left. |
-| Cargo lock refresh (`wasm-bindgen` 0.2.108 → 0.2.129 and transitive patches) | Dependabot job reported `update_not_possible` for `wasm-bindgen` (and other direct deps) even though `cargo update` succeeds within existing `Cargo.toml` ranges. Pushed lockfile refresh to `main` so Auto Tag / Release can ship. |
+| Cargo lock refresh (`wasm-bindgen` 0.2.108 → 0.2.129 and transitive patches) | Dependabot job reported `update_not_possible` for `wasm-bindgen` (and other direct deps) even though `cargo update` succeeds within existing `Cargo.toml` ranges. Pushed lockfile refresh to `main`. |
+
+Auto Tag tagged **v0.2.10**. Release published npm **0.2.10** (OIDC +
+provenance). Main Test succeeded for the lockfile commit and
+`chore(release): v0.2.10`. Auto Tag correctly skipped the release commit.
 
 No open Dependabot PRs. PR #26 (`feat/npm-component`) is still open and
 behind; feature PR, not a Dependabot blocker. Failed Release runs for tags
-**v0.2.5** and **v0.2.6** are unchanged (rerun is still 403). Latest npm was
-**0.2.9** before this lockfile push.
+**v0.2.5** and **v0.2.6** are unchanged (rerun is still 403).
 
 ## Still blocked (owner apply)
 
