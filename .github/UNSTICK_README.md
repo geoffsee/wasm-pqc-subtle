@@ -29,8 +29,9 @@ ML-DSA, 64-byte ML-KEM). Public keys / signatures / ciphertexts unchanged.
 Callers that persisted expanded secret keys from ≤0.2.10 need regeneration
 or a seed migration.
 
-Auto Tag / Release / main Test should run on the squash-merge commit
-(`RELEASE_TOKEN` merge attribution).
+Auto Tag tagged **v0.2.11**. Release published npm **0.2.11** (OIDC +
+provenance). Main Test succeeded for the merge, release, and docs commits.
+Auto Tag correctly skipped the release commit.
 
 No open Dependabot PRs. PR #26 (`feat/npm-component`) is still open and
 behind; feature PR, not a Dependabot blocker. Failed Release runs for tags
