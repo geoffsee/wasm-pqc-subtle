@@ -3,16 +3,23 @@
 
 use argon2::password_hash::phc::{PasswordHash, Salt};
 use argon2::{Algorithm, Argon2, Params, PasswordHasher, PasswordVerifier, Version};
-use ml_dsa::signature::{Signer, Verifier};
+use ml_dsa::signature::{Keypair, Signer, Verifier};
 use ml_dsa::{
-    EncodedSignature, EncodedSigningKey, EncodedVerifyingKey, KeyGen, MlDsa44, MlDsa65, MlDsa87,
-    MlDsaParams, Signature, SigningKey, VerifyingKey,
+    EncodedSignature, EncodedVerifyingKey, Generate as DsaGenerate, KeyExport as DsaKeyExport,
+    KeyInit as DsaKeyInit, MlDsa44, MlDsa65, MlDsa87, MlDsaParams, Signature, SigningKey,
+    VerifyingKey,
 };
-use ml_kem::kem::{Decapsulate, Encapsulate};
-use ml_kem::{Ciphertext, Encoded, EncodedSizeUser, KemCore, MlKem768, MlKem1024};
-use rand_core::OsRng;
+use ml_kem::kem::{
+    Ciphertext, Decapsulate, Encapsulate, Generate as KemGenerate, Kem, KeyExport as KemKeyExport,
+    KeyInit as KemKeyInit, TryKeyInit,
+};
+use ml_kem::{MlKem768, MlKem1024};
 
-/// A generated key pair, encoded per FIPS 203 / FIPS 204.
+/// A generated key pair.
+///
+/// Public keys use the FIPS expanded encodings. Secret keys use the preferred
+/// seed forms from current `ml-kem` / `ml-dsa` (64-byte ML-KEM seed, 32-byte
+/// ML-DSA seed).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct KeyPair {
     pub public_key: Vec<u8>,
@@ -96,26 +103,27 @@ pub fn ml_kem_decapsulate(
     }
 }
 
-fn kem_generate<K: KemCore>() -> KeyPair {
-    let (sk, pk) = K::generate(&mut OsRng);
+fn kem_generate<K>() -> KeyPair
+where
+    K: Kem,
+    K::DecapsulationKey: KemGenerate + KemKeyExport,
+    K::EncapsulationKey: KemKeyExport,
+{
+    let (sk, pk) = K::generate_keypair();
     KeyPair {
-        public_key: pk.as_bytes().to_vec(),
-        secret_key: sk.as_bytes().to_vec(),
+        public_key: pk.to_bytes().to_vec(),
+        secret_key: sk.to_bytes().to_vec(),
     }
 }
 
 fn kem_encapsulate<K>(public_key: &[u8]) -> Result<Encapsulation, Error>
 where
-    K: KemCore,
-    K::EncapsulationKey: EncodedSizeUser,
+    K: Kem,
+    K::EncapsulationKey: TryKeyInit + Encapsulate,
 {
-    let encoded: Encoded<K::EncapsulationKey> = public_key
-        .try_into()
-        .map_err(|_| Error::InvalidLength("Invalid public key length".into()))?;
-    let pk = K::EncapsulationKey::from_bytes(&encoded);
-    let (ct, ss) = pk
-        .encapsulate(&mut OsRng)
-        .map_err(|_| Error::Failed("Encapsulation failed".into()))?;
+    let pk = K::EncapsulationKey::new_from_slice(public_key)
+        .map_err(|_| Error::InvalidLength("Invalid public key length or encoding".into()))?;
+    let (ct, ss) = pk.encapsulate();
     Ok(Encapsulation {
         ciphertext: ct.to_vec(),
         shared_secret: ss.to_vec(),
@@ -124,20 +132,15 @@ where
 
 fn kem_decapsulate<K>(secret_key: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>, Error>
 where
-    K: KemCore,
-    K::DecapsulationKey: EncodedSizeUser,
+    K: Kem,
+    K::DecapsulationKey: KemKeyInit + Decapsulate,
 {
-    let encoded: Encoded<K::DecapsulationKey> = secret_key
-        .try_into()
+    let sk = K::DecapsulationKey::new_from_slice(secret_key)
         .map_err(|_| Error::InvalidLength("Invalid secret key length".into()))?;
-    let sk = K::DecapsulationKey::from_bytes(&encoded);
     let ct: Ciphertext<K> = ciphertext
         .try_into()
         .map_err(|_| Error::InvalidLength("Invalid ciphertext length".into()))?;
-    let ss = sk
-        .decapsulate(&ct)
-        .map_err(|_| Error::Failed("Decapsulation failed".into()))?;
-    Ok(ss.to_vec())
+    Ok(sk.decapsulate(&ct).to_vec())
 }
 
 // ── ML-DSA ──────────────────────────────────────────────────────────────
@@ -172,18 +175,16 @@ pub fn ml_dsa_verify(
 }
 
 fn dsa_generate<P: MlDsaParams>() -> KeyPair {
-    let kp = P::key_gen(&mut OsRng);
+    let sk = SigningKey::<P>::generate();
     KeyPair {
-        public_key: kp.verifying_key().encode().to_vec(),
-        secret_key: kp.signing_key().encode().to_vec(),
+        public_key: sk.verifying_key().to_bytes().to_vec(),
+        secret_key: sk.to_bytes().to_vec(),
     }
 }
 
 fn dsa_sign<P: MlDsaParams>(secret_key: &[u8], message: &[u8]) -> Result<Vec<u8>, Error> {
-    let encoded: EncodedSigningKey<P> = secret_key
-        .try_into()
+    let sk = SigningKey::<P>::new_from_slice(secret_key)
         .map_err(|_| Error::InvalidLength("Invalid secret key length".into()))?;
-    let sk = SigningKey::<P>::decode(&encoded);
     Ok(sk.sign(message).encode().to_vec())
 }
 
