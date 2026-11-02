@@ -1,4 +1,4 @@
-# Unstick status (2026-10-26)
+# Unstick status (2026-11-02)
 
 Weekly unsticker PAT (`RELEASE_TOKEN`) can push **non-workflow** commits to
 `main` (ruleset bypass), squash-merge a green PR, and **create** issues, but
@@ -11,21 +11,27 @@ Weekly unsticker PAT (`RELEASE_TOKEN`) can push **non-workflow** commits to
 | `gh workflow run` / `gh run rerun` | 403 `Resource not accessible by personal access token` |
 | Issue comment | 403 `Resource not accessible by personal access token` |
 | Read Actions `GITHUB_TOKEN` in Supervisor agent step | not injected (only `GH_TOKEN=RELEASE_TOKEN`) |
+| Code scanning alerts API | 403 (check-run annotations still readable) |
 
 `@dependabot rebase` posted by the scheduled updater (`GITHUB_TOKEN`) is
 rejected: "only users with push access". Updating a Dependabot branch has to
-be a git merge of `main` plus `git push` with `RELEASE_TOKEN`.
+be a git merge of `main` plus `git push` with `RELEASE_TOKEN` (or push fix
+commits onto the Dependabot head, as done this run).
 
 ## Landed this run
 
 | Item | Result |
 |---|---|
-| #32 `github/codeql-action` 4.39.0 → 4.39.1 | Already auto-merged earlier today. No open Dependabot PRs left. |
-| Cargo lock refresh (`wasm-bindgen` 0.2.108 → 0.2.129 and transitive patches) | Dependabot job reported `update_not_possible` for `wasm-bindgen` (and other direct deps) even though `cargo update` succeeds within existing `Cargo.toml` ranges. Pushed lockfile refresh to `main`. |
+| #33 `ml-dsa` 0.0.4 → 0.1.1, `ml-kem` 0.2.3 → 0.3.3 (`cargo-major`) | Red CI: crates dropped `KemCore` / `EncodedSigningKey`. Adapted `src/algorithms.rs` to seed-based `KeyInit`/`KeyExport`/`Generate`; enabled `ml-kem` `getrandom`. Cleared CodeQL `HardcodedCryptographicValue` from length-check tests. Pushed fixes onto the Dependabot branch, squash-merged when green. |
 
-Auto Tag tagged **v0.2.10**. Release published npm **0.2.10** (OIDC +
-provenance). Main Test succeeded for the lockfile commit and
-`chore(release): v0.2.10`. Auto Tag correctly skipped the release commit.
+Secret keys on the public API are now the preferred seed forms (32-byte
+ML-DSA, 64-byte ML-KEM). Public keys / signatures / ciphertexts unchanged.
+Callers that persisted expanded secret keys from ≤0.2.10 need regeneration
+or a seed migration.
+
+Auto Tag tagged **v0.2.11**. Release published npm **0.2.11** (OIDC +
+provenance). Main Test succeeded for the merge, release, and docs commits.
+Auto Tag correctly skipped the release commit.
 
 No open Dependabot PRs. PR #26 (`feat/npm-component`) is still open and
 behind; feature PR, not a Dependabot blocker. Failed Release runs for tags
@@ -34,15 +40,12 @@ behind; feature PR, not a Dependabot blocker. Failed Release runs for tags
 ## Still blocked (owner apply)
 
 `.github/unstick-dependabot-oidc.patch` still cannot be pushed (workflow
-scope). Reconfirmed this run: push of patched workflows → `GH013`.
+scope).
 
 Dependabot auto-merge still uses `GITHUB_TOKEN` on `pull_request`, so merges
-do not start Auto Tag / Test / CodeQL on the resulting `main` push (seen again
-on #32 — zero workflow runs on commit `3294b4a`). Harmless for Actions-only
-bumps; cargo merges still need a real-user-token merge or a follow-up
-`Cargo.lock` push to ship.
-
-`cargo-major` (including 0.x minor bumps) remains excluded from auto-merge.
+do not start Auto Tag / Test / CodeQL on the resulting `main` push.
+`cargo-major` remains excluded from auto-merge (correct for this run — needed
+an API adapt).
 
 ### Owner: grant token scopes, then apply (one shot)
 
