@@ -1,4 +1,4 @@
-# Unstick status (2026-11-02)
+# Unstick status (2026-11-09)
 
 Weekly unsticker PAT (`RELEASE_TOKEN`) can push **non-workflow** commits to
 `main` (ruleset bypass), squash-merge a green PR, and **create** issues, but
@@ -15,26 +15,23 @@ Weekly unsticker PAT (`RELEASE_TOKEN`) can push **non-workflow** commits to
 
 `@dependabot rebase` posted by the scheduled updater (`GITHUB_TOKEN`) is
 rejected: "only users with push access". Updating a Dependabot branch has to
-be a git merge of `main` plus `git push` with `RELEASE_TOKEN` (or push fix
-commits onto the Dependabot head, as done this run).
+be a git merge of `main` plus `git push` with `RELEASE_TOKEN`.
 
 ## Landed this run
 
 | Item | Result |
 |---|---|
-| #33 `ml-dsa` 0.0.4 → 0.1.1, `ml-kem` 0.2.3 → 0.3.3 (`cargo-major`) | Red CI: crates dropped `KemCore` / `EncodedSigningKey`. Adapted `src/algorithms.rs` to seed-based `KeyInit`/`KeyExport`/`Generate`; enabled `ml-kem` `getrandom`. Cleared CodeQL `HardcodedCryptographicValue` from length-check tests. Pushed fixes onto the Dependabot branch, squash-merged when green. |
+| #34 `github/codeql-action` 4.39.1 → 4.39.3 | Already merged before this run (GITHUB_TOKEN auto-merge). |
+| #35 `ml-dsa` 0.1.1 → 0.1.2, `ml-kem` 0.3.3 → 0.3.4 (`cargo-minor-and-patch`) | Stuck **BEHIND** after #34 with auto-merge enabled and green checks. Merged `main` into the Dependabot head and pushed with `RELEASE_TOKEN`. Auto-merge then squash-landed #35. |
 
-Secret keys on the public API are now the preferred seed forms (32-byte
-ML-DSA, 64-byte ML-KEM). Public keys / signatures / ciphertexts unchanged.
-Callers that persisted expanded secret keys from ≤0.2.10 need regeneration
-or a seed migration.
+Because the #35 merge was attributed to `GITHUB_TOKEN`, Auto Tag / Test / CodeQL
+did **not** run on that `main` push. Manually performed the Auto Tag steps:
+bumped **0.2.11 → 0.2.12**, tagged `v0.2.12`, pushed with `RELEASE_TOKEN`.
+Auto Tag correctly skipped the release commit. Release + main Test queued from
+the tag/release push.
 
-Auto Tag tagged **v0.2.11**. Release published npm **0.2.11** (OIDC +
-provenance). Main Test succeeded for the merge, release, and docs commits.
-Auto Tag correctly skipped the release commit.
-
-No open Dependabot PRs. PR #26 (`feat/npm-component`) is still open and
-behind; feature PR, not a Dependabot blocker. Failed Release runs for tags
+No open Dependabot PRs after #35. PR #26 (`feat/npm-component`) is still open
+and behind; feature PR, not a Dependabot blocker. Failed Release runs for tags
 **v0.2.5** and **v0.2.6** are unchanged (rerun is still 403).
 
 ## Still blocked (owner apply)
@@ -43,9 +40,10 @@ behind; feature PR, not a Dependabot blocker. Failed Release runs for tags
 scope).
 
 Dependabot auto-merge still uses `GITHUB_TOKEN` on `pull_request`, so merges
-do not start Auto Tag / Test / CodeQL on the resulting `main` push.
-`cargo-major` remains excluded from auto-merge (correct for this run — needed
-an API adapt).
+do not start Auto Tag / Test / CodeQL on the resulting `main` push. The
+scheduled `Update outdated PR branches` job still tries `@dependabot rebase`,
+which Dependabot rejects for this token model — behind Dependabot PRs stay
+stuck until a human/unsticker merges `main` and pushes.
 
 ### Owner: grant token scopes, then apply (one shot)
 
