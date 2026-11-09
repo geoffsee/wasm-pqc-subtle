@@ -27,8 +27,9 @@ be a git merge of `main` plus `git push` with `RELEASE_TOKEN`.
 Because the #35 merge was attributed to `GITHUB_TOKEN`, Auto Tag / Test / CodeQL
 did **not** run on that `main` push. Manually performed the Auto Tag steps:
 bumped **0.2.11 → 0.2.12**, tagged `v0.2.12`, pushed with `RELEASE_TOKEN`.
-Auto Tag correctly skipped the release commit. Release + main Test queued from
-the tag/release push.
+Auto Tag correctly skipped the release commit. Release published npm
+**0.2.12** (OIDC + provenance). Main Test and CodeQL succeeded for the release
+commit.
 
 No open Dependabot PRs after #35. PR #26 (`feat/npm-component`) is still open
 and behind; feature PR, not a Dependabot blocker. Failed Release runs for tags
