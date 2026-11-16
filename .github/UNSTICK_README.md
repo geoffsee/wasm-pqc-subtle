@@ -23,7 +23,7 @@ be a git merge of `main` plus `git push` with `RELEASE_TOKEN`.
 |---|---|
 | Open Dependabot PRs | None. Monday scans for cargo + github-actions succeeded with "nothing to update" for groups. |
 | Main CI / Auto Tag / Release | Green. Latest tag `v0.2.12` matches npm `0.2.12`. |
-| `wasm-bindgen` 0.2.129 → 0.2.130 | Dependabot saw 0.2.130 but reported **No update possible** because locked `js-sys 0.3.106` requires `wasm-bindgen = "=0.2.129"`. Refreshed `Cargo.lock` (`js-sys` → 0.3.107, `wasm-bindgen` family → 0.2.130, plus other compatible transitive bumps). Native tests + `make build` passed. Pushed to `main` so Auto Tag can ship. |
+| `wasm-bindgen` 0.2.129 → 0.2.130 | Dependabot saw 0.2.130 but reported **No update possible** because locked `js-sys 0.3.106` requires `wasm-bindgen = "=0.2.129"`. Refreshed `Cargo.lock` (`js-sys` → 0.3.107, `wasm-bindgen` family → 0.2.130, plus other compatible transitive bumps). Native tests + `make build` passed. Pushed to `main`; Auto Tag cut **v0.2.13** and Release published npm **0.2.13** (OIDC + provenance). |
 
 PR #26 (`feat/npm-component`) is still open and **BLOCKED**: required `Test` check is `action_required` after `github-actions[bot]` branch updates (workflows need approval; unsticker cannot approve/rerun). Feature PR, not a Dependabot blocker. Failed Release runs for tags **v0.2.5** and **v0.2.6** are unchanged (rerun is still 403).
 
