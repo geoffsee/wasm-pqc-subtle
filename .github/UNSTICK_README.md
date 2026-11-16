@@ -1,4 +1,4 @@
-# Unstick status (2026-11-09)
+# Unstick status (2026-11-16)
 
 Weekly unsticker PAT (`RELEASE_TOKEN`) can push **non-workflow** commits to
 `main` (ruleset bypass), squash-merge a green PR, and **create** issues, but
@@ -21,24 +21,17 @@ be a git merge of `main` plus `git push` with `RELEASE_TOKEN`.
 
 | Item | Result |
 |---|---|
-| #34 `github/codeql-action` 4.39.1 → 4.39.3 | Already merged before this run (GITHUB_TOKEN auto-merge). |
-| #35 `ml-dsa` 0.1.1 → 0.1.2, `ml-kem` 0.3.3 → 0.3.4 (`cargo-minor-and-patch`) | Stuck **BEHIND** after #34 with auto-merge enabled and green checks. Merged `main` into the Dependabot head and pushed with `RELEASE_TOKEN`. Auto-merge then squash-landed #35. |
+| Open Dependabot PRs | None. Monday scans for cargo + github-actions succeeded with "nothing to update" for groups. |
+| Main CI / Auto Tag / Release | Green. Latest tag `v0.2.12` matches npm `0.2.12`. |
+| `wasm-bindgen` 0.2.129 → 0.2.130 | Dependabot saw 0.2.130 but reported **No update possible** because locked `js-sys 0.3.106` requires `wasm-bindgen = "=0.2.129"`. Refreshed `Cargo.lock` (`js-sys` → 0.3.107, `wasm-bindgen` family → 0.2.130, plus other compatible transitive bumps). Native tests + `make build` passed. Pushed to `main` so Auto Tag can ship. |
 
-Because the #35 merge was attributed to `GITHUB_TOKEN`, Auto Tag / Test / CodeQL
-did **not** run on that `main` push. Manually performed the Auto Tag steps:
-bumped **0.2.11 → 0.2.12**, tagged `v0.2.12`, pushed with `RELEASE_TOKEN`.
-Auto Tag correctly skipped the release commit. Release published npm
-**0.2.12** (OIDC + provenance). Main Test and CodeQL succeeded for the release
-commit.
-
-No open Dependabot PRs after #35. PR #26 (`feat/npm-component`) is still open
-and behind; feature PR, not a Dependabot blocker. Failed Release runs for tags
-**v0.2.5** and **v0.2.6** are unchanged (rerun is still 403).
+PR #26 (`feat/npm-component`) is still open and **BLOCKED**: required `Test` check is `action_required` after `github-actions[bot]` branch updates (workflows need approval; unsticker cannot approve/rerun). Feature PR, not a Dependabot blocker. Failed Release runs for tags **v0.2.5** and **v0.2.6** are unchanged (rerun is still 403).
 
 ## Still blocked (owner apply)
 
 `.github/unstick-dependabot-oidc.patch` still cannot be pushed (workflow
-scope).
+scope). Verified again this run: push of the patched workflows was rejected
+with GH013.
 
 Dependabot auto-merge still uses `GITHUB_TOKEN` on `pull_request`, so merges
 do not start Auto Tag / Test / CodeQL on the resulting `main` push. The
