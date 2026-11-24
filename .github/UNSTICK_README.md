@@ -1,4 +1,4 @@
-# Unstick status (2026-11-16)
+# Unstick status (2026-11-24)
 
 Weekly unsticker PAT (`RELEASE_TOKEN`) can push **non-workflow** commits to
 `main` (ruleset bypass), squash-merge a green PR, and **create** issues, but
@@ -21,9 +21,10 @@ be a git merge of `main` plus `git push` with `RELEASE_TOKEN`.
 
 | Item | Result |
 |---|---|
-| Open Dependabot PRs | None. Monday scans for cargo + github-actions succeeded with "nothing to update" for groups. |
-| Main CI / Auto Tag / Release | Green. Latest tag `v0.2.12` matches npm `0.2.12`. |
-| `wasm-bindgen` 0.2.129 → 0.2.130 | Dependabot saw 0.2.130 but reported **No update possible** because locked `js-sys 0.3.106` requires `wasm-bindgen = "=0.2.129"`. Refreshed `Cargo.lock` (`js-sys` → 0.3.107, `wasm-bindgen` family → 0.2.130, plus other compatible transitive bumps). Native tests + `make build` passed. Pushed to `main`; Auto Tag cut **v0.2.13** and Release published npm **0.2.13** (OIDC + provenance). |
+| Open Dependabot PRs | None. Monday scans for cargo + github-actions succeeded with "nothing to update" for direct/grouped deps. |
+| Main CI / Auto Tag / Release | Green. Latest tag `v0.2.14` published to npm as `0.2.14` (OIDC + provenance). |
+| Transitive `Cargo.lock` refresh | Dependabot does not open PRs for transitive-only bumps. `cargo update` moved `anyhow` 1.0.104→1.0.105, `hashbrown` 0.17.1→0.17.2, `pin-project-lite` 0.2.17→0.2.18, `zeroize` 1.9.1→1.9.2. Native tests passed. Pushed to `main`; Auto Tag cut **v0.2.14** and Release published npm **0.2.14**. |
+| `github/codeql-action` 4.39.4 | Published 2026-11-20; Monday Dependabot still reported 4.39.3 (3-day cooldown). Cannot bump workflows without `workflow` scope — expect Dependabot PR next Monday. |
 
 PR #26 (`feat/npm-component`) is still open and **BLOCKED**: required `Test` check is `action_required` after `github-actions[bot]` branch updates (workflows need approval; unsticker cannot approve/rerun). Feature PR, not a Dependabot blocker. Failed Release runs for tags **v0.2.5** and **v0.2.6** are unchanged (rerun is still 403).
 
@@ -31,7 +32,7 @@ PR #26 (`feat/npm-component`) is still open and **BLOCKED**: required `Test` che
 
 `.github/unstick-dependabot-oidc.patch` still cannot be pushed (workflow
 scope). Verified again this run: push of the patched workflows was rejected
-with GH013.
+with GH013 (including to a non-`main` branch).
 
 Dependabot auto-merge still uses `GITHUB_TOKEN` on `pull_request`, so merges
 do not start Auto Tag / Test / CodeQL on the resulting `main` push. The
